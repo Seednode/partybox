@@ -227,6 +227,8 @@ func (h *Hub) run(cfg *Config) {
 
 			gameState := h.currentGameStateLocked()
 
+			h.sendModeratorViewLocked()
+
 			c.send <- SessionInfoMessage{
 				Type:        "session_info",
 				LobbyLocked: h.lobbyLocked,
