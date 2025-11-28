@@ -195,6 +195,21 @@ body {
   background: #e5edff;
 }
 
+.celebrity-item {
+    font-size: 0.9rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border-subtle);
+    background: #f8fafc;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    line-height: 1;
+    white-space: nowrap;
+}
+
 /* Moderator panel */
 
 #mod-panel {

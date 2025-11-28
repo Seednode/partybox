@@ -23,6 +23,8 @@
   const qrImage = document.getElementById('qr-image');
   const qrClose = document.getElementById('qr-close');
 
+  const newGameBtn = document.getElementById('new-game-btn');
+
   let username = '';
   let celeb = '';
   let isModerator = false;
@@ -403,6 +405,16 @@
     if (e.target === qrModal) {
       qrModal.style.display = 'none';
     }
+  });
+
+  newGameBtn.addEventListener('click', function() {
+    const parts = location.pathname.replace(/\/+$/, '').split('/');
+    if (parts.length <= 1) {
+      window.location.href = '/';
+      return;
+    }
+    const base = parts.slice(0, -1).join('/') || '/';
+    window.location.href = base;
   });
 
   function handleSessionInfo(msg) {
