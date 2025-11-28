@@ -208,7 +208,7 @@
     }
 
     if (playerWarningEl) {
-      if (count === 0) {
+      if (count === 0 ) {
         playerWarningEl.textContent = 'Waiting for players to join.';
       } else if (count === 1) {
         playerWarningEl.textContent =
@@ -220,10 +220,10 @@
 
     if (typeof isModerator !== 'undefined' && isModerator) {
       if (startBtn) {
-        startBtn.disabled = (count === 0);
+        startBtn.disabled = (count < 3);
       }
       if (restartBtn) {
-        restartBtn.disabled = (count === 0);
+        restartBtn.disabled = (gameStarted != true);
       }
     }
   }
