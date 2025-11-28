@@ -222,9 +222,6 @@
       if (startBtn) {
         startBtn.disabled = (count < 3);
       }
-      if (restartBtn) {
-        restartBtn.disabled = (gameStarted != true);
-      }
     }
   }
 
