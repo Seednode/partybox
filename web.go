@@ -143,7 +143,7 @@ func ServePage(ctx context.Context, cfg *Config, args []string) error {
 
 	registerHome(cfg, cfg.prefix+"/", mux)
 
-	registerGame(cfg.prefix+"/celebrity", mux)
+	registerGame(cfg, "/celebrity", mux, cfg.sessionTimeout)
 
 	mux.GET(cfg.prefix+"/assets/css/*css", serveAssets(cfg, errs))
 
