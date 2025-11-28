@@ -233,7 +233,8 @@ body {
 }
 
 #lock-btn,
-#start-btn {
+#start-btn,
+#restart-btn {
   padding: 0.45rem 0.9rem;
   border-radius: 999px;
   border: 1px solid transparent;
@@ -252,18 +253,18 @@ body {
   background: #e0e7ff;
 }
 
-#start-btn {
+#start-btn, #restart-btn {
   background: #dcfce7;
   color: #064e3b;
   border-color: #bbf7d0;
 }
 
-#start-btn:disabled {
+#start-btn:disabled, #restart-btn:disabled {
   opacity: 0.6;
   cursor: default;
 }
 
-#start-btn:not(:disabled):hover {
+#start-btn:not(:disabled):hover, #restart-btn:not(:disabled):hover {
   background: #bbf7d0;
 }
 
@@ -278,6 +279,10 @@ body {
   border-radius: 12px;
   border: 1px solid var(--border-subtle);
   background: #f9fafb;
+}
+
+#player-warning {
+  margin-bottom: 1rem;
 }
 
 #players-table {

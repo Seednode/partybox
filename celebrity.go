@@ -48,7 +48,7 @@ type Player struct {
 
 // Messages coming from clients
 type ClientMessage struct {
-	Type           string `json:"type"`                      // "join", "lock_lobby", "kick", "start_game", "guess"
+	Type           string `json:"type"`                      // "join", "lock_lobby", "kick", "start_game", "restart_game", "guess"
 	Username       string `json:"username,omitempty"`        // join
 	Celebrity      string `json:"celebrity,omitempty"`       // join / guess
 	Lock           *bool  `json:"lock,omitempty"`            // lock_lobby
@@ -218,7 +218,6 @@ func (h *Hub) run(cfg *Config) {
 
 			h.clients[c] = true
 
-			// Decide celeb visibility
 			var celebs []string
 			if h.gameStarted || isModerator {
 				celebs = h.currentCelebritiesLocked()
@@ -226,10 +225,8 @@ func (h *Hub) run(cfg *Config) {
 				celebs = []string{}
 			}
 
-			// Snapshot game state
 			gameState := h.currentGameStateLocked()
 
-			// Session info first
 			c.send <- SessionInfoMessage{
 				Type:        "session_info",
 				LobbyLocked: h.lobbyLocked,
@@ -240,7 +237,6 @@ func (h *Hub) run(cfg *Config) {
 
 			h.mu.Unlock()
 
-			// Then send celebs + game_state to this client
 			c.send <- CelebrityListMessage{
 				Type:        "celebrity_list",
 				Celebrities: celebs,
@@ -259,7 +255,6 @@ func (h *Hub) run(cfg *Config) {
 			isModerator := (playerID == h.moderatorPlayerID)
 			h.mu.Unlock()
 
-			// Moderator "leaving" does not erase players.
 			if playerID != "" && !isModerator {
 				go h.scheduleRemoval(playerID, cfg.playerTimeout)
 			}
@@ -276,8 +271,6 @@ func (h *Hub) run(cfg *Config) {
 	}
 }
 
-// Only returns celebrities that are still "in" during the game.
-// Before the game starts, all entered celebrities are shown.
 func (h *Hub) currentCelebritiesLocked() []string {
 	celebs := make([]string, 0, len(h.players))
 	for _, p := range h.players {
@@ -297,9 +290,6 @@ func (h *Hub) idToUsernameLocked() map[string]string {
 	return m
 }
 
-// broadcastCelebritiesLocked broadcasts the celebrity list, but only shows
-// it to the moderator before the game starts; others see an empty list.
-// After the game has started, everyone sees the full (pruned) list.
 func (h *Hub) broadcastCelebritiesLocked() {
 	celebsAll := h.currentCelebritiesLocked()
 
@@ -323,7 +313,6 @@ func (h *Hub) broadcastCelebritiesLocked() {
 	}
 }
 
-// Union-find helpers for teams
 func (h *Hub) teamFindLocked(id string) string {
 	parent, ok := h.teams[id]
 	if !ok {
@@ -369,7 +358,6 @@ func (h *Hub) startGameLocked() {
 		ids = append(ids, p.PlayerID)
 	}
 
-	// Fisher-Yates shuffle using crypto/rand
 	for i := len(ids) - 1; i > 0; i-- {
 		var b [1]byte
 		if _, err := rand.Read(b[:]); err != nil {
@@ -389,14 +377,57 @@ func (h *Hub) startGameLocked() {
 		h.teams = make(map[string]string)
 	}
 
-	// Once the game starts, everyone is allowed to see the celebrity list.
 	h.broadcastCelebritiesLocked()
+	h.sendModeratorViewLocked()
 	h.broadcastGameStateLocked()
 }
 
-// scheduleRemoval waits for d, and if no client with this playerID
-// is currently connected, removes that player's entry and broadcasts
-// the updated list.
+// restartGameLocked clears all "out" status and teams, reshuffles turn order,
+// and restarts the game with the same players and celebrities.
+func (h *Hub) restartGameLocked() {
+	if len(h.players) == 0 {
+		return
+	}
+
+	if h.eliminated == nil {
+		h.eliminated = make(map[string]bool)
+	} else {
+		for k := range h.eliminated {
+			delete(h.eliminated, k)
+		}
+	}
+
+	if h.teams == nil {
+		h.teams = make(map[string]string)
+	} else {
+		for k := range h.teams {
+			delete(h.teams, k)
+		}
+	}
+
+	ids := make([]string, 0, len(h.players))
+	for _, p := range h.players {
+		ids = append(ids, p.PlayerID)
+	}
+
+	for i := len(ids) - 1; i > 0; i-- {
+		var b [1]byte
+		if _, err := rand.Read(b[:]); err != nil {
+			continue
+		}
+		j := int(b[0]) % (i + 1)
+		ids[i], ids[j] = ids[j], ids[i]
+	}
+
+	h.turnOrder = ids
+	h.currentTurn = 0
+	h.gameStarted = true
+
+	h.broadcastCelebritiesLocked()
+	h.sendModeratorViewLocked()
+	h.broadcastGameStateLocked()
+}
+
 func (h *Hub) scheduleRemoval(playerID string, d time.Duration) {
 	time.Sleep(d)
 
@@ -434,7 +465,6 @@ func (h *Hub) scheduleRemoval(playerID string, d time.Duration) {
 	h.broadcastGameStateLocked()
 }
 
-// handleJoin processes "join" messages.
 func (h *Hub) handleJoin(cfg *Config, jr joinRequest) {
 	msg := jr.msg
 	c := jr.client
@@ -523,7 +553,6 @@ func (h *Hub) handleJoin(cfg *Config, jr joinRequest) {
 	h.broadcastGameStateLocked()
 }
 
-// handleGuess processes a player's guess during the game.
 func (h *Hub) handleGuess(cfg *Config, gr guessRequest) {
 	c := gr.client
 	msg := gr.msg
@@ -594,7 +623,6 @@ func (h *Hub) handleGuess(cfg *Config, gr guessRequest) {
 		text = guesser.Username + " correctly guessed that \"" + owner.Celebrity + "\" belongs to " + owner.Username + "."
 		logf(cfg, "GAMES: %q correctly guessed %q for %q in %q", guesser.Username, owner.Username, owner.Celebrity, h.id)
 
-		// Check if game should end (only one active player left).
 		activeCount := 0
 		for _, p := range h.players {
 			if h.eliminated[p.PlayerID] {
@@ -638,13 +666,12 @@ func (h *Hub) handleGuess(cfg *Config, gr guessRequest) {
 		}
 	}
 
-	// Update celebrity list (with visibility rules) and game state.
 	h.broadcastCelebritiesLocked()
 	h.broadcastGameStateLocked()
 }
 
 // handleModCommand processes moderator commands: lock/unlock lobby, kick users,
-// start the game.
+// start the game, restart the game.
 func (h *Hub) handleModCommand(cmd modCommand) {
 	c := cmd.client
 	msg := cmd.msg
@@ -654,7 +681,6 @@ func (h *Hub) handleModCommand(cmd modCommand) {
 
 	h.lastActive = time.Now()
 
-	// Only moderator may issue these commands
 	if h.moderatorPlayerID == "" || c.playerID != h.moderatorPlayerID {
 		return
 	}
@@ -664,7 +690,6 @@ func (h *Hub) handleModCommand(cmd modCommand) {
 		locked := msg.Lock != nil && *msg.Lock
 		h.lobbyLocked = locked
 
-		// Broadcast lobby state
 		for client := range h.clients {
 			select {
 			case client.send <- LobbyStateMessage{
@@ -721,10 +746,12 @@ func (h *Hub) handleModCommand(cmd modCommand) {
 
 	case "start_game":
 		h.startGameLocked()
+
+	case "restart_game":
+		h.restartGameLocked()
 	}
 }
 
-// sendModeratorViewLocked assumes h.mu is already held.
 func (h *Hub) sendModeratorViewLocked() {
 	if h.moderatorPlayerID == "" {
 		return
@@ -765,7 +792,6 @@ func (h *Hub) sendModeratorViewLocked() {
 	}
 }
 
-// closeAll disconnects all clients of this hub (used by reaper).
 func (h *Hub) closeAll() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -810,8 +836,6 @@ func getOrSetPlayerID(w http.ResponseWriter, r *http.Request) string {
 	return id
 }
 
-// GameManager holds a set of hubs keyed by game ID, so each $path/$gameid
-// is its own isolated session.
 type GameManager struct {
 	mu          sync.Mutex
 	hubs        map[string]*Hub
@@ -843,8 +867,6 @@ func (gm *GameManager) getHub(cfg *Config, gameID string) *Hub {
 	return hub
 }
 
-// newGameID generates a crypto-random game ID and ensures it doesn't
-// collide with existing games.
 func (gm *GameManager) newGameID() string {
 	const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 	for {
@@ -868,7 +890,6 @@ func (gm *GameManager) newGameID() string {
 	}
 }
 
-// reaperLoop periodically removes hubs that have been idle longer than idleTimeout.
 func (gm *GameManager) reaperLoop() {
 	ticker := time.NewTicker(gm.idleTimeout / 2)
 	for range ticker.C {
@@ -889,7 +910,6 @@ func (gm *GameManager) reaperLoop() {
 	}
 }
 
-// WebSocket handler that picks the hub based on :gameid
 func serveWSForManager(cfg *Config, gm *GameManager) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		gameID := ps.ByName("gameid")
@@ -943,7 +963,7 @@ func (c *Client) readPump(h *Hub) {
 				client: c,
 				msg:    msg,
 			}
-		case "lock_lobby", "kick", "start_game":
+		case "lock_lobby", "kick", "start_game", "restart_game":
 			h.mods <- modCommand{
 				client: c,
 				msg:    msg,
@@ -954,7 +974,6 @@ func (c *Client) readPump(h *Hub) {
 				msg:    msg,
 			}
 		default:
-			// ignore unknown types
 		}
 	}
 }
@@ -969,8 +988,6 @@ func (c *Client) writePump() {
 	}
 }
 
-// currentGameStateLocked builds a GameStateMessage from current state.
-// h.mu MUST be held when calling this.
 func (h *Hub) currentGameStateLocked() GameStateMessage {
 	idToUser := h.idToUsernameLocked()
 
@@ -1050,8 +1067,6 @@ func (h *Hub) currentGameStateLocked() GameStateMessage {
 	}
 }
 
-// broadcastGameStateLocked sends game_state to all clients.
-// h.mu MUST be held when calling this.
 func (h *Hub) broadcastGameStateLocked() {
 	msg := h.currentGameStateLocked()
 	for client := range h.clients {
@@ -1064,7 +1079,6 @@ func (h *Hub) broadcastGameStateLocked() {
 	}
 }
 
-// QR handler: generates a PNG QR code for the current game URL using go-qrcode.
 func qrHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	gameID := ps.ByName("gameid")
 	if gameID == "" {
@@ -1072,7 +1086,6 @@ func qrHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
-	// Derive scheme (respecting TLS and X-Forwarded-Proto if present).
 	scheme := "http"
 	if r.TLS != nil {
 		scheme = "https"
@@ -1081,12 +1094,11 @@ func qrHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		scheme = proto
 	}
 
-	// We are at /.../:gameid/qr; strip trailing "/qr" to get the game URL.
 	path := strings.TrimSuffix(r.URL.Path, "/qr")
 
 	url := scheme + "://" + r.Host + path
 
-	const qrSize = 320 // mobile-friendly size
+	const qrSize = 320
 	png, err := qrcode.Encode(url, qrcode.Medium, qrSize)
 	if err != nil {
 		http.Error(w, "qr generation failed", http.StatusInternalServerError)
@@ -1096,8 +1108,6 @@ func qrHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	w.Header().Set("Content-Type", "image/png")
 	_, _ = w.Write(png)
 }
-
-// ---- Static file paths ----
 
 //go:embed celebrity/index.html
 var indexHTML []byte
@@ -1143,8 +1153,6 @@ func getJsHandler(cfg *Config) func(w http.ResponseWriter, r *http.Request, _ ht
 	}
 }
 
-// redirectNewGame handles GET /path by generating a new random game ID
-// (with server-side collision detection) and redirecting to /path/:gameid.
 func redirectNewGame(cfg *Config, path string, gm *GameManager) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		gameID := gm.newGameID()
@@ -1153,27 +1161,17 @@ func redirectNewGame(cfg *Config, path string, gm *GameManager) httprouter.Handl
 	}
 }
 
-// registerGame sets up routes so that:
-//   - $path                  → redirects to new random game (8-char ID)
-//   - $path/:gameid          → HTML client
-//   - $path/:gameid/ws       → WebSocket for that game
-//   - $path/:gameid/qr       → PNG QR code for that game URL
 func registerCelebrityGame(cfg *Config, path string, mux *httprouter.Router) {
 	gm := newGameManager(cfg.sessionTimeout)
 
-	// Root path → redirect to new random game
 	mux.GET(path, redirectNewGame(cfg, path, gm))
 
-	// Per-game client view (HTML)
 	mux.GET(cfg.prefix+path+"/:gameid", getIndexHandler(cfg))
 
-	// Shared assets (no gameid in route)
 	mux.GET(cfg.prefix+"/assets/celebrity/app.css", getCssHandler(cfg))
 	mux.GET(cfg.prefix+"/assets/celebrity/app.js", getJsHandler(cfg))
 
-	// Per-game websocket
 	mux.GET(cfg.prefix+path+"/:gameid/ws", serveWSForManager(cfg, gm))
 
-	// Per-game QR code
 	mux.GET(cfg.prefix+path+"/:gameid/qr", qrHandler)
 }

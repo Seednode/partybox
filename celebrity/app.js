@@ -7,6 +7,7 @@
   const modPanel = document.getElementById('mod-panel');
   const lockBtn = document.getElementById('lock-btn');
   const startBtn = document.getElementById('start-btn');
+  const restartBtn = document.getElementById('restart-btn');
   const lockStatusEl = document.getElementById('lock-status');
   const playersBody = document.getElementById('players-body');
   const playerCountEl = document.getElementById('player-count');
@@ -209,16 +210,21 @@
     if (playerWarningEl) {
       if (count === 0) {
         playerWarningEl.textContent = 'Waiting for players to join.';
-      } else if (count > 0 && count < 3) {
+      } else if (count === 1) {
         playerWarningEl.textContent =
-          `Warning: games usually need at least 3 players. You currently have ${count}.`;
+          `Warning: games need at least 2 players. You currently have ${count}.`;
       } else {
         playerWarningEl.textContent = '';
       }
     }
 
-    if (typeof isModerator !== 'undefined' && isModerator && startBtn) {
-      startBtn.disabled = (count === 0);
+    if (typeof isModerator !== 'undefined' && isModerator) {
+      if (startBtn) {
+        startBtn.disabled = (count === 0);
+      }
+      if (restartBtn) {
+        restartBtn.disabled = (count === 0);
+      }
     }
   }
 
@@ -294,13 +300,13 @@
       gameInfoEl.innerHTML = lines.map(function(t) {
         return '<div>' + t + '</div>';
       }).join('');
-      if (isModerator) {
+      if (isModerator && startBtn) {
         startBtn.disabled = false;
       }
       return;
     }
 
-    if (isModerator) {
+    if (isModerator && startBtn) {
       startBtn.disabled = true;
     }
 
@@ -513,6 +519,15 @@
       type: 'start_game'
     });
   });
+
+  if (restartBtn) {
+    restartBtn.addEventListener('click', function() {
+      if (!isModerator) return;
+      safeSend({
+        type: 'restart_game'
+      });
+    });
+  }
 
   playersBody.addEventListener('click', function(e) {
     if (!isModerator) return;
