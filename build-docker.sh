@@ -17,7 +17,7 @@ image_name="partybox"
 image_version="$(grep "releaseVersion" main.go | head -n1 | awk '{print $3}' | sed 's/\"//g')"
 
 # platforms to build for
-platforms="linux/385"
+platforms="linux/386"
 platforms+=",linux/amd64"
 platforms+=",linux/arm"
 platforms+=",linux/arm64"
