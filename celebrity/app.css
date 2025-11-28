@@ -16,9 +16,16 @@
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
   background: radial-gradient(circle at top, #1d4ed8 0, #0f172a 45%, #020617 100%);
   color: var(--text-main);
   min-height: 100vh;
@@ -37,6 +44,8 @@ body {
   padding: clamp(1rem, 2vw, 1.5rem);
 }
 
+/* Top bar */
+
 #top-bar {
   display: flex;
   justify-content: space-between;
@@ -51,28 +60,32 @@ body {
   letter-spacing: 0.02em;
 }
 
+/* Right side: username + buttons */
 #top-bar-right {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.5rem;
+  flex-wrap: wrap;
+  max-width: 100%;
 }
 
+/* “You: …” pill */
 #user-pill {
   font-size: 0.9rem;
-  padding: 0.4rem 1rem;
+  padding: 0.35rem 0.9rem;
   border-radius: var(--radius-pill);
-
-  background: #0f172a;
-  color: #ffffff;
-  border: 1px solid #020617;
-
+  background: #0b1120;
+  color: #f9fafb;
   white-space: nowrap;
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+/* Top-right buttons – Share + New game */
 #qr-btn,
-#newgame-btn {
+#new-game-btn {
   font-size: 0.9rem;
   padding: 0.45rem 0.9rem;
   border-radius: var(--radius-pill);
@@ -81,6 +94,7 @@ body {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.35rem;
   line-height: 1;
   white-space: nowrap;
@@ -91,23 +105,14 @@ body {
   font-size: 1rem;
 }
 
-#newgame-btn::before {
-  content: "🎲";
+#new-game-btn::before {
+  content: "🎮";
   font-size: 1rem;
 }
 
-#qr-btn:hover {
+#qr-btn:hover,
+#new-game-btn:hover {
   background: #e5e7eb;
-}
-
-#newgame-btn {
-  background: #dcfce7;
-  border-color: #bbf7d0;
-  color: #166534;
-}
-
-#newgame-btn:hover {
-  background: #bbf7d0;
 }
 
 #status {
@@ -131,6 +136,8 @@ body {
   margin-bottom: 0.15rem;
 }
 
+/* Section header */
+
 .section-header {
   display: flex;
   align-items: baseline;
@@ -143,6 +150,8 @@ body {
   margin: 0.5rem 0 0.25rem;
   font-size: clamp(1.05rem, 3.2vw, 1.2rem);
 }
+
+/* Celebrity list */
 
 #celebs {
   margin: 0;
@@ -157,27 +166,24 @@ body {
 }
 
 #celebs li {
+  padding: 0.6rem 0.9rem;
+  font-size: 0.95rem;
   border-bottom: 1px solid #e5e7eb;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 #celebs li:last-child {
   border-bottom: none;
 }
 
-#celebs .celebrity-item {
-  width: 100%;
-  padding: 0.6rem 0.9rem;
-  font-size: 0.95rem;
-  border: none;
-  background: transparent;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  text-align: left;
-  cursor: pointer;
+#celebs li span {
+  flex: 1;
 }
 
-#celebs .celebrity-item::after {
+#celebs li::after {
   content: "Tap to guess";
   font-size: 0.75rem;
   color: var(--text-muted);
@@ -185,11 +191,11 @@ body {
   white-space: nowrap;
 }
 
-#celebs .celebrity-item:hover,
-#celebs .celebrity-item:focus-visible {
+#celebs li:hover {
   background: #e5edff;
-  outline: none;
 }
+
+/* Moderator panel */
 
 #mod-panel {
   margin-top: 1.5rem;
@@ -223,7 +229,7 @@ body {
 
 #lock-btn {
   background: #eef2ff;
-  color: #4338ca;
+  color: #1e1b4b;
   border-color: #c7d2fe;
 }
 
@@ -233,7 +239,7 @@ body {
 
 #start-btn {
   background: #dcfce7;
-  color: #166534;
+  color: #064e3b;
   border-color: #bbf7d0;
 }
 
@@ -283,25 +289,21 @@ body {
   border-bottom: none;
 }
 
-.player-warning {
-  margin: 0.25rem 0 0.5rem;
-  font-size: 0.85rem;
-  color: #b45309;
-}
-
 .kick-btn {
   padding: 0.35rem 0.7rem;
   font-size: 0.8rem;
   cursor: pointer;
   border-radius: 999px;
-  border: 1px solid rgba(220, 38, 38, 0.2);
-  background: #fef2f2;
-  color: var(--danger);
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  background: #991b1b;
+  color: #fef2f2;
 }
 
 .kick-btn:hover {
-  background: #fee2e2;
+  background: #b91c1c;
 }
+
+/* Modals */
 
 #guess-modal,
 #qr-modal {
@@ -316,11 +318,6 @@ body {
 
 #qr-modal {
   z-index: 1100;
-}
-
-button:focus-visible {
-  outline: 2px solid #1d4ed8;
-  outline-offset: 2px;
 }
 
 #guess-modal-inner,
@@ -375,11 +372,6 @@ button:focus-visible {
   color: var(--text-main);
 }
 
-div.qr-close {
-  text-align:right;
-  margin-top:0.75rem;
-}
-
 #guess-confirm {
   margin-left: 0.5rem;
   background: var(--accent);
@@ -411,9 +403,15 @@ div.qr-close {
   font-size: 0.9rem;
 }
 
-@media (max-width: 640px) {
+/* Mobile tweaks */
+
+@media (max-width: 1280px) {
+  body {
+    padding: 0.6rem;
+  }
+
   .app-shell {
-    padding: 0.9rem;
+    padding: 1rem 0.85rem;
     border-radius: 12px;
   }
 
@@ -424,15 +422,26 @@ div.qr-close {
 
   #top-bar-right {
     align-self: stretch;
-    justify-content: flex-end;
+    justify-content: flex-start;
     gap: 0.4rem;
   }
 
-  #status {
-    font-size: 0.85rem;
+  #user-pill {
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  #qr-btn,
+  #new-game-btn {
+    flex: 0 0 auto;
+    min-width: auto;
   }
 
   #celebs {
     max-height: 55vh;
+  }
+
+  #status {
+    font-size: 0.85rem;
   }
 }
