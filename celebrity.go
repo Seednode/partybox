@@ -237,6 +237,12 @@ func (h *Hub) run(cfg *Config) {
 				celebs = []string{}
 			}
 
+			// If the moderator is re-joining, send the state again
+			if isModerator {
+				h.sendModeratorViewLocked()
+			}
+			h.broadcastGameStateLocked()
+
 			h.mu.Unlock()
 
 			// Then send celeb list (possibly empty) to this client only
@@ -595,7 +601,7 @@ func (h *Hub) handleJoin(cfg *Config, jr joinRequest) {
 			Username:  msg.Username,
 			Celebrity: msg.Celebrity,
 		})
-		logf(cfg, "GAMES: Player %s joined %s", msg.Username, h.id)
+		logf(cfg, "GAMES: Player %q joined %s", msg.Username, h.id)
 	}
 
 	h.broadcastCelebritiesLocked()
@@ -671,7 +677,7 @@ func (h *Hub) handleGuess(cfg *Config, gr guessRequest) {
 		h.eliminated[owner.PlayerID] = true
 		h.teamUnionLocked(guesser.PlayerID, owner.PlayerID)
 		text = guesser.Username + " correctly guessed that \"" + owner.Celebrity + "\" belongs to " + owner.Username + "."
-		logf(cfg, "GAMES: %s correctly guessed %s for %s in %s", guesser.Username, owner.Username, owner.Celebrity, h.id)
+		logf(cfg, "GAMES: %q correctly guessed %q for %q in %q", guesser.Username, owner.Username, owner.Celebrity, h.id)
 
 		// Check if game should end (only one active player left).
 		activeCount := 0
@@ -686,7 +692,7 @@ func (h *Hub) handleGuess(cfg *Config, gr guessRequest) {
 		}
 	} else {
 		text = guesser.Username + " incorrectly guessed that \"" + msg.Celebrity + "\" belongs to " + msg.TargetUsername + "."
-		logf(cfg, "GAMES: %s incorrectly guessed %s for %s in %s", guesser.Username, msg.TargetUsername, msg.Celebrity, h.id)
+		logf(cfg, "GAMES: %q incorrectly guessed %q for %q in %q", guesser.Username, msg.TargetUsername, msg.Celebrity, h.id)
 
 		if len(h.turnOrder) > 1 {
 			for i := 1; i <= len(h.turnOrder); i++ {
@@ -1097,6 +1103,8 @@ func getIndexHandler(cfg *Config) func(w http.ResponseWriter, r *http.Request, _
 		w.Header().Set("Cache-Control", "public, max-age=3600")
 		w.Header().Set("Expires", time.Now().Add(time.Hour).UTC().Format(http.TimeFormat))
 		securityHeaders(cfg, w)
+
+		_ = getOrSetPlayerID(w, r)
 
 		_, _ = w.Write(indexHTML)
 	}

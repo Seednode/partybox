@@ -1,3 +1,4 @@
+// partybox.js
 (function() {
   const statusEl = document.getElementById('status');
   const gameInfoEl = document.getElementById('game-info');
@@ -17,7 +18,6 @@
   const guessConfirmBtn = document.getElementById('guess-confirm');
 
   const qrBtn = document.getElementById('qr-btn');
-  const newGameBtn = document.getElementById('newgame-btn');
   const qrModal = document.getElementById('qr-modal');
   const qrImage = document.getElementById('qr-image');
   const qrClose = document.getElementById('qr-close');
@@ -30,21 +30,165 @@
   let gameStarted = false;
   let currentTurnUser = '';
   let amOut = false;
-  let activePlayers = [];     // usernames of active players (not out)
-  let eliminatedList = [];    // usernames of eliminated players
+  let activePlayers = [];  // usernames of active players (not out)
+  let eliminatedList = []; // usernames of eliminated players
   let pendingCelebrity = '';
 
-  const proto = (location.protocol === 'https:') ? 'wss://' : 'ws://';
-  const wsPath = location.pathname.replace(/\/$/, '') + '/ws';
-  const ws = new WebSocket(proto + location.host + wsPath);
+  let ws = null;
+  let connectAttempts = 0;
+  const MAX_CONNECT_ATTEMPTS = 8;
+  const CONNECT_TIMEOUT_MS = 4000;
+  let connectWatchdog = null;
+
+  function wsURL() {
+    const proto = (location.protocol === 'https:') ? 'wss://' : 'ws://';
+    const wsPath = location.pathname.replace(/\/$/, '') + '/ws';
+    return proto + location.host + wsPath;
+  }
+
+  function clearWatchdog() {
+    if (connectWatchdog !== null) {
+      clearTimeout(connectWatchdog);
+      connectWatchdog = null;
+    }
+  }
+
+  function safeSend(obj) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      console.warn('WS not open; dropping message', obj);
+      return;
+    }
+    ws.send(JSON.stringify(obj));
+  }
+
+  function connectWebSocket() {
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+
+    connectAttempts++;
+    statusEl.textContent = 'Connecting…';
+
+    ws = new WebSocket(wsURL());
+
+    // Watchdog: if we never get onopen within N ms, force close so onclose can retry.
+    clearWatchdog();
+    connectWatchdog = setTimeout(function() {
+      if (!ws) return;
+      if (ws.readyState === WebSocket.CONNECTING) {
+        console.warn('WS still CONNECTING, forcing close to trigger retry');
+        try { ws.close(); } catch (e) {}
+      }
+    }, CONNECT_TIMEOUT_MS);
+
+    ws.onopen = function() {
+      clearWatchdog();
+      connectAttempts = 0;
+      statusEl.textContent = 'Connected.';
+    };
+
+    ws.onmessage = function(event) {
+      try {
+        const msg = JSON.parse(event.data);
+
+        if (msg.type === 'session_info') {
+          handleSessionInfo(msg);
+          return;
+        }
+
+        if (msg.type === 'celebrity_list' && Array.isArray(msg.celebrities)) {
+          renderCelebs(msg.celebrities);
+          return;
+        }
+
+        if (msg.type === 'collision') {
+          handleCollision(msg);
+          return;
+        }
+
+        if (msg.type === 'lobby_state') {
+          lobbyLocked = !!msg.locked;
+          if (isModerator) {
+            updateLockUI();
+          }
+          statusEl.textContent = lobbyLocked
+            ? 'Lobby is locked. No new players may join.'
+            : 'Lobby is unlocked.';
+          return;
+        }
+
+        if (msg.type === 'lobby_locked') {
+          statusEl.textContent = msg.message;
+          return;
+        }
+
+        if (msg.type === 'kicked') {
+          wasKicked = true;
+          const text = msg.message || 'You have been kicked.';
+          statusEl.textContent = text;
+          try { ws.close(); } catch (e) {}
+          return;
+        }
+
+        if (msg.type === 'moderator_view') {
+          isModerator = true;
+          modPanel.style.display = 'block';
+
+          lobbyLocked = !!msg.lobby_locked;
+          updateLockUI();
+          if (Array.isArray(msg.players)) {
+            renderModeratorPlayers(msg.players);
+          }
+          return;
+        }
+
+        if (msg.type === 'game_state') {
+          updateGameInfo(msg);
+          return;
+        }
+
+        if (msg.type === 'guess_result') {
+          statusEl.textContent = msg.message || '';
+          return;
+        }
+
+        if (msg.type === 'not_your_turn' || msg.type === 'guess_error') {
+          statusEl.textContent = msg.message || '';
+          return;
+        }
+      } catch (e) {
+        console.error('bad message', e);
+      }
+    };
+
+    ws.onclose = function() {
+      clearWatchdog();
+      if (wasKicked) {
+        return;
+      }
+      if (connectAttempts >= MAX_CONNECT_ATTEMPTS) {
+        statusEl.textContent = 'Disconnected. Unable to reconnect.';
+        return;
+      }
+      statusEl.textContent = 'Disconnected. Reconnecting…';
+      setTimeout(connectWebSocket, Math.min(1000 * connectAttempts, 5000));
+    };
+
+    ws.onerror = function() {
+      // Let onclose handle the retry logic; just surface a message if not kicked.
+      if (!wasKicked) {
+        statusEl.textContent = 'WebSocket error. Retrying…';
+      }
+    };
+  }
 
   function sendJoin() {
     if (!username || !celeb) return;
-    ws.send(JSON.stringify({
+    safeSend({
       type: 'join',
       username: username,
       celebrity: celeb
-    }));
+    });
   }
 
   function updateLockUI() {
@@ -201,11 +345,11 @@
     }
     const target = guessTargetSelect.value;
     if (!target) return;
-    ws.send(JSON.stringify({
+    safeSend({
       type: 'guess',
       celebrity: pendingCelebrity,
       target_username: target
-    }));
+    });
     closeGuessModal();
   });
 
@@ -226,190 +370,100 @@
     }
   });
 
-  // New game: navigate to base path (without :gameid) so server can redirect
-  newGameBtn.addEventListener('click', function() {
-    // Strip trailing slash, remove last path segment (game id)
-    const parts = location.pathname.replace(/\/+$/, '').split('/');
-    if (parts.length <= 1) {
-      window.location.href = '/';
+  function handleSessionInfo(msg) {
+    lobbyLocked = !!msg.lobby_locked;
+    const isExisting = !!msg.is_existing;
+    isModerator = !!msg.is_moderator;
+    const existingName = msg.username || '';
+
+    if (lobbyLocked && !isExisting && !isModerator) {
+      statusEl.textContent = 'Lobby is locked; no new players may join.';
       return;
     }
-    const base = parts.slice(0, -1).join('/') || '/';
-    window.location.href = base;
-  });
 
-  ws.onopen = function() {
-    statusEl.textContent = 'Connected.';
-  };
-
-  ws.onmessage = function(event) {
-    try {
-      const msg = JSON.parse(event.data);
-
-      if (msg.type === 'session_info') {
-        lobbyLocked = !!msg.lobby_locked;
-        const isExisting = !!msg.is_existing;
-        isModerator = !!msg.is_moderator;
-        const existingName = msg.username || '';
-
-        if (lobbyLocked && !isExisting && !isModerator) {
-          statusEl.textContent = 'Lobby is locked; no new players may join.';
-          return;
-        }
-
-        if (isModerator) {
-          if (existingName) {
-            userNameEl.textContent = existingName;
-          } else {
-            userNameEl.textContent = 'Moderator';
-          }
-          statusEl.textContent = lobbyLocked
-            ? 'You are the moderator. Lobby is locked.'
-            : 'You are the moderator. Lobby is unlocked.';
-          modPanel.style.display = 'block';
-          updateLockUI();
-          return;
-        }
-
-        if (isExisting) {
-          if (existingName) {
-            username = existingName;
-            userNameEl.textContent = existingName;
-          }
-          statusEl.textContent = lobbyLocked
-            ? 'Rejoined as existing player; lobby is locked.'
-            : 'Rejoined as existing player.';
-          return;
-        }
-
-        // New, non-moderator player, lobby is open → prompt username + celebrity
-        statusEl.textContent = 'Lobby is unlocked. Please join the game.';
-        username = prompt('Enter your username:') || '';
-        if (!username) return;
-        userNameEl.textContent = username;
-        celeb = prompt('Enter a celebrity name:') || '';
-        if (!celeb) return;
-        sendJoin();
-        return;
+    if (isModerator) {
+      if (existingName) {
+        userNameEl.textContent = existingName;
+      } else {
+        userNameEl.textContent = 'Moderator';
       }
-
-      if (msg.type === 'celebrity_list' && Array.isArray(msg.celebrities)) {
-        celebsEl.innerHTML = '';
-        msg.celebrities.forEach(function(c) {
-          const li = document.createElement('li');
-          const span = document.createElement('span');
-          span.textContent = c;
-          li.appendChild(span);
-          li.addEventListener('click', function() {
-            openGuessModal(c);
-          });
-          celebsEl.appendChild(li);
-        });
-        return;
-      }
-
-      if (msg.type === 'collision') {
-        statusEl.textContent = msg.message;
-
-        if (msg.field === 'username') {
-          const newUsername = prompt(msg.message, username) || '';
-          if (!newUsername) return;
-          username = newUsername;
-          userNameEl.textContent = username;
-        } else if (msg.field === 'celebrity') {
-          const newCeleb = prompt(msg.message, celeb) || '';
-          if (!newCeleb) return;
-          celeb = newCeleb;
-        }
-
-        sendJoin();
-        return;
-      }
-
-      if (msg.type === 'lobby_state') {
-        lobbyLocked = !!msg.locked;
-        if (isModerator) {
-          updateLockUI();
-        }
-        statusEl.textContent = lobbyLocked
-          ? 'Lobby is locked. No new players may join.'
-          : 'Lobby is unlocked.';
-        return;
-      }
-
-      if (msg.type === 'lobby_locked') {
-        statusEl.textContent = msg.message;
-        return;
-      }
-
-      if (msg.type === 'kicked') {
-        wasKicked = true;
-        const text = msg.message || 'You have been kicked.';
-        statusEl.textContent = text;
-        ws.close();
-        return;
-      }
-
-      if (msg.type === 'moderator_view') {
-        isModerator = true;
-        modPanel.style.display = 'block';
-
-        lobbyLocked = !!msg.lobby_locked;
-        updateLockUI();
-        if (Array.isArray(msg.players)) {
-          renderModeratorPlayers(msg.players);
-        }
-        return;
-      }
-
-      if (msg.type === 'game_state') {
-        updateGameInfo(msg);
-        return;
-      }
-
-      if (msg.type === 'guess_result') {
-        statusEl.textContent = msg.message || '';
-        return;
-      }
-
-      if (msg.type === 'not_your_turn' || msg.type === 'guess_error') {
-        statusEl.textContent = msg.message || '';
-        return;
-      }
-    } catch (e) {
-      console.error('bad message', e);
+      statusEl.textContent = lobbyLocked
+        ? 'You are the moderator. Lobby is locked.'
+        : 'You are the moderator. Lobby is unlocked.';
+      modPanel.style.display = 'block';
+      updateLockUI();
+      return;
     }
-  };
 
-  ws.onclose = function() {
-    if (!wasKicked) {
-      statusEl.textContent = 'Disconnected.';
+    if (isExisting) {
+      if (existingName) {
+        username = existingName;
+        userNameEl.textContent = existingName;
+      }
+      statusEl.textContent = lobbyLocked
+        ? 'Rejoined as existing player; lobby is locked.'
+        : 'Rejoined as existing player.';
+      return;
     }
-  };
 
-  ws.onerror = function() {
-    if (!wasKicked) {
-      statusEl.textContent = 'Error with WebSocket.';
+    // New, non-moderator player, lobby is open → prompt username + celebrity
+    statusEl.textContent = 'Lobby is unlocked. Please join the game.';
+    username = prompt('Enter your username:') || '';
+    if (!username) return;
+    userNameEl.textContent = username;
+    celeb = prompt('Enter a celebrity name:') || '';
+    if (!celeb) return;
+    sendJoin();
+  }
+
+  function renderCelebs(list) {
+    celebsEl.innerHTML = '';
+    list.forEach(function(c) {
+      const li = document.createElement('li');
+      const span = document.createElement('span');
+      span.textContent = c;
+      li.appendChild(span);
+      li.addEventListener('click', function() {
+        openGuessModal(c);
+      });
+      celebsEl.appendChild(li);
+    });
+  }
+
+  function handleCollision(msg) {
+    statusEl.textContent = msg.message;
+
+    if (msg.field === 'username') {
+      const newUsername = prompt(msg.message, username) || '';
+      if (!newUsername) return;
+      username = newUsername;
+      userNameEl.textContent = username;
+    } else if (msg.field === 'celebrity') {
+      const newCeleb = prompt(msg.message, celeb) || '';
+      if (!newCeleb) return;
+      celeb = newCeleb;
     }
-  };
+
+    sendJoin();
+  }
 
   // Moderator: lock/unlock lobby
   lockBtn.addEventListener('click', function() {
     if (!isModerator) return;
     const newLock = !lobbyLocked;
-    ws.send(JSON.stringify({
+    safeSend({
       type: 'lock_lobby',
       lock: newLock
-    }));
+    });
   });
 
   // Moderator: start game
   startBtn.addEventListener('click', function() {
     if (!isModerator) return;
     if (gameStarted) return;
-    ws.send(JSON.stringify({
+    safeSend({
       type: 'start_game'
-    }));
+    });
   });
 
   // Moderator: kick players (event delegation on table body)
@@ -424,9 +478,12 @@
       return;
     }
 
-    ws.send(JSON.stringify({
+    safeSend({
       type: 'kick',
       target_username: targetUsername
-    }));
+    });
   });
+
+  // Kick off initial connection
+  connectWebSocket();
 })();
