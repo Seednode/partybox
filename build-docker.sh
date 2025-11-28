@@ -17,10 +17,10 @@ image_name="partybox"
 image_version="$(grep "releaseVersion" main.go | head -n1 | awk '{print $3}' | sed 's/\"//g')"
 
 # platforms to build for
-platforms="linux/amd64"
+platforms="linux/385"
+platforms+=",linux/amd64"
 platforms+=",linux/arm"
 platforms+=",linux/arm64"
-platforms+=",linux/ppc64le"
 
 # copy native image to local image repository
 docker buildx build \
