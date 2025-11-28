@@ -59,11 +59,17 @@ body {
 
 #user-pill {
   font-size: 0.9rem;
-  padding: 0.35rem 0.9rem;
+  padding: 0.4rem 1rem;
   border-radius: var(--radius-pill);
-  background: var(--accent-soft);
-  color: var(--accent);
+
+  /* Higher contrast for all users */
+  background: #0f172a;  /* dark slate */
+  color: #ffffff;        /* pure white */
+  border: 1px solid #020617;
+
   white-space: nowrap;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 #qr-btn,
@@ -152,24 +158,27 @@ body {
 }
 
 #celebs li {
-  padding: 0.6rem 0.9rem;
-  font-size: 0.95rem;
   border-bottom: 1px solid #e5e7eb;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 
 #celebs li:last-child {
   border-bottom: none;
 }
 
-#celebs li span {
-  flex: 1;
+#celebs .celebrity-item {
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.95rem;
+  border: none;
+  background: transparent;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
 }
 
-#celebs li::after {
+#celebs .celebrity-item::after {
   content: "Tap to guess";
   font-size: 0.75rem;
   color: var(--text-muted);
@@ -177,8 +186,10 @@ body {
   white-space: nowrap;
 }
 
-#celebs li:hover {
+#celebs .celebrity-item:hover,
+#celebs .celebrity-item:focus-visible {
   background: #e5edff;
+  outline: none;
 }
 
 #mod-panel {
@@ -306,6 +317,11 @@ body {
 
 #qr-modal {
   z-index: 1100;
+}
+
+button:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
 }
 
 #guess-modal-inner,

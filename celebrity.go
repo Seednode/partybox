@@ -201,12 +201,10 @@ func (h *Hub) run(cfg *Config) {
 			h.mu.Lock()
 			h.lastActive = time.Now()
 
-			// First connection becomes moderator
 			if h.moderatorPlayerID == "" {
 				h.moderatorPlayerID = c.playerID
 			}
 
-			// Is this cookie already associated with a player?
 			isExisting := false
 			existingName := ""
 			for _, p := range h.players {
@@ -220,7 +218,18 @@ func (h *Hub) run(cfg *Config) {
 
 			h.clients[c] = true
 
-			// Send session_info first, so client decides whether/how to prompt.
+			// Decide celeb visibility
+			var celebs []string
+			if h.gameStarted || isModerator {
+				celebs = h.currentCelebritiesLocked()
+			} else {
+				celebs = []string{}
+			}
+
+			// Snapshot game state
+			gameState := h.currentGameStateLocked()
+
+			// Session info first
 			c.send <- SessionInfoMessage{
 				Type:        "session_info",
 				LobbyLocked: h.lobbyLocked,
@@ -229,27 +238,14 @@ func (h *Hub) run(cfg *Config) {
 				Username:    existingName,
 			}
 
-			// Decide what celeb list this client is allowed to see:
-			var celebs []string
-			if h.gameStarted || isModerator {
-				celebs = h.currentCelebritiesLocked()
-			} else {
-				celebs = []string{}
-			}
-
-			// If the moderator is re-joining, send the state again
-			if isModerator {
-				h.sendModeratorViewLocked()
-			}
-			h.broadcastGameStateLocked()
-
 			h.mu.Unlock()
 
-			// Then send celeb list (possibly empty) to this client only
+			// Then send celebs + game_state to this client
 			c.send <- CelebrityListMessage{
 				Type:        "celebrity_list",
 				Celebrities: celebs,
 			}
+			c.send <- gameState
 
 		case c := <-h.unreg:
 			h.mu.Lock()
@@ -351,97 +347,6 @@ func (h *Hub) teamUnionLocked(a, b string) {
 	h.teams[rb] = ra
 }
 
-// broadcastGameStateLocked sends the current game state to all clients.
-func (h *Hub) broadcastGameStateLocked() {
-	idToUser := h.idToUsernameLocked()
-
-	turnNames := make([]string, 0, len(h.turnOrder))
-	for _, pid := range h.turnOrder {
-		if name, ok := idToUser[pid]; ok {
-			turnNames = append(turnNames, name)
-		}
-	}
-
-	elimNames := make([]string, 0, len(h.eliminated))
-	for pid, out := range h.eliminated {
-		if out {
-			if name, ok := idToUser[pid]; ok {
-				elimNames = append(elimNames, name)
-			}
-		}
-	}
-
-	var currentName string
-	if h.gameStarted && len(h.turnOrder) > 0 && h.currentTurn >= 0 && h.currentTurn < len(h.turnOrder) {
-		if name, ok := idToUser[h.turnOrder[h.currentTurn]]; ok {
-			currentName = name
-		}
-	}
-
-	// Winner if game is not started and exactly one active player remains.
-	winnerName := ""
-	if !h.gameStarted {
-		activeCount := 0
-		var lastActiveID string
-		for _, p := range h.players {
-			if h.eliminated[p.PlayerID] {
-				continue
-			}
-			activeCount++
-			lastActiveID = p.PlayerID
-		}
-		if activeCount == 1 {
-			if name, ok := idToUser[lastActiveID]; ok {
-				winnerName = name
-			}
-		}
-	}
-
-	// Build team listing from union-find structure.
-	teamBuckets := make(map[string][]string)
-	for _, p := range h.players {
-		root := h.teamFindLocked(p.PlayerID)
-		teamBuckets[root] = append(teamBuckets[root], p.Username)
-	}
-
-	teams := make([]TeamState, 0, len(teamBuckets))
-	for root, members := range teamBuckets {
-		leaderName := idToUser[root]
-		if leaderName == "" {
-			leaderName = "(unknown)"
-		}
-		ts := TeamState{
-			Leader: leaderName,
-		}
-		for _, name := range members {
-			if name == leaderName {
-				continue
-			}
-			ts.Members = append(ts.Members, name)
-		}
-		teams = append(teams, ts)
-	}
-
-	msg := GameStateMessage{
-		Type:        "game_state",
-		Started:     h.gameStarted,
-		CurrentTurn: currentName,
-		TurnOrder:   turnNames,
-		Eliminated:  elimNames,
-		Winner:      winnerName,
-		Teams:       teams,
-	}
-
-	for client := range h.clients {
-		select {
-		case client.send <- msg:
-		default:
-			delete(h.clients, client)
-			close(client.send)
-		}
-	}
-}
-
 // startGameLocked freezes and shuffles the turn order and marks the game started.
 func (h *Hub) startGameLocked() {
 	if h.gameStarted {
@@ -526,6 +431,7 @@ func (h *Hub) scheduleRemoval(playerID string, d time.Duration) {
 
 	h.broadcastCelebritiesLocked()
 	h.sendModeratorViewLocked()
+	h.broadcastGameStateLocked()
 }
 
 // handleJoin processes "join" messages.
@@ -614,6 +520,7 @@ func (h *Hub) handleJoin(cfg *Config, jr joinRequest) {
 
 	h.broadcastCelebritiesLocked()
 	h.sendModeratorViewLocked()
+	h.broadcastGameStateLocked()
 }
 
 // handleGuess processes a player's guess during the game.
@@ -810,6 +717,7 @@ func (h *Hub) handleModCommand(cmd modCommand) {
 
 		h.broadcastCelebritiesLocked()
 		h.sendModeratorViewLocked()
+		h.broadcastGameStateLocked()
 
 	case "start_game":
 		h.startGameLocked()
@@ -1057,6 +965,101 @@ func (c *Client) writePump() {
 	for msg := range c.send {
 		if err := c.conn.WriteJSON(msg); err != nil {
 			return
+		}
+	}
+}
+
+// currentGameStateLocked builds a GameStateMessage from current state.
+// h.mu MUST be held when calling this.
+func (h *Hub) currentGameStateLocked() GameStateMessage {
+	idToUser := h.idToUsernameLocked()
+
+	turnNames := make([]string, 0, len(h.turnOrder))
+	for _, pid := range h.turnOrder {
+		if name, ok := idToUser[pid]; ok {
+			turnNames = append(turnNames, name)
+		}
+	}
+
+	elimNames := make([]string, 0, len(h.eliminated))
+	for pid, out := range h.eliminated {
+		if out {
+			if name, ok := idToUser[pid]; ok {
+				elimNames = append(elimNames, name)
+			}
+		}
+	}
+
+	var currentName string
+	if h.gameStarted && len(h.turnOrder) > 0 && h.currentTurn >= 0 && h.currentTurn < len(h.turnOrder) {
+		if name, ok := idToUser[h.turnOrder[h.currentTurn]]; ok {
+			currentName = name
+		}
+	}
+
+	winnerName := ""
+	if !h.gameStarted {
+		activeCount := 0
+		var lastActiveID string
+		for _, p := range h.players {
+			if h.eliminated[p.PlayerID] {
+				continue
+			}
+			activeCount++
+			lastActiveID = p.PlayerID
+		}
+		if activeCount == 1 {
+			if name, ok := idToUser[lastActiveID]; ok {
+				winnerName = name
+			}
+		}
+	}
+
+	teamBuckets := make(map[string][]string)
+	for _, p := range h.players {
+		root := h.teamFindLocked(p.PlayerID)
+		teamBuckets[root] = append(teamBuckets[root], p.Username)
+	}
+
+	teams := make([]TeamState, 0, len(teamBuckets))
+	for root, members := range teamBuckets {
+		leaderName := idToUser[root]
+		if leaderName == "" {
+			leaderName = "(unknown)"
+		}
+		ts := TeamState{
+			Leader: leaderName,
+		}
+		for _, name := range members {
+			if name == leaderName {
+				continue
+			}
+			ts.Members = append(ts.Members, name)
+		}
+		teams = append(teams, ts)
+	}
+
+	return GameStateMessage{
+		Type:        "game_state",
+		Started:     h.gameStarted,
+		CurrentTurn: currentName,
+		TurnOrder:   turnNames,
+		Eliminated:  elimNames,
+		Winner:      winnerName,
+		Teams:       teams,
+	}
+}
+
+// broadcastGameStateLocked sends game_state to all clients.
+// h.mu MUST be held when calling this.
+func (h *Hub) broadcastGameStateLocked() {
+	msg := h.currentGameStateLocked()
+	for client := range h.clients {
+		select {
+		case client.send <- msg:
+		default:
+			delete(h.clients, client)
+			close(client.send)
 		}
 	}
 }

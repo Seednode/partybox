@@ -354,7 +354,19 @@
     });
 
     guessModal.style.display = 'flex';
+    guessTargetSelect.focus();
   }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      if (guessModal.style.display === 'flex') {
+        closeGuessModal();
+      }
+      if (qrModal.style.display === 'flex') {
+        qrModal.style.display = 'none';
+      }
+    }
+  });
 
   function closeGuessModal() {
     pendingCelebrity = '';
@@ -447,12 +459,16 @@
     celebsEl.innerHTML = '';
     list.forEach(function(c) {
       const li = document.createElement('li');
-      const span = document.createElement('span');
-      span.textContent = c;
-      li.appendChild(span);
-      li.addEventListener('click', function() {
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'celebrity-item';
+      button.textContent = c;
+      button.addEventListener('click', function () {
         openGuessModal(c);
       });
+
+      li.appendChild(button);
       celebsEl.appendChild(li);
     });
   }

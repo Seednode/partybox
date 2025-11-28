@@ -30,13 +30,17 @@
         <h1>Guess The Celebrity</h1>
         <div id="top-bar-right">
           <div id="user-pill">You: <span id="user-name">(not set)</span></div>
-          <button id="qr-btn" type="button" title="Show QR code for this game">Share</button>
+          <button id="qr-btn" type="button"
+                  title="Share this game"
+                  aria-label="Share this game link and QR code">
+            Share
+          </button>
           <button id="newgame-btn" type="button" title="Start a new game">New game</button>
         </div>
       </div>
 
-      <div id="status">Connecting…</div>
-      <div id="game-info"></div>
+      <div id="status" role="status" aria-live="polite">Connecting…</div>
+      <div id="game-info" aria-live="polite"></div>
 
       <div class="section-header">
         <h2>Celebrity List</h2>
@@ -72,9 +76,9 @@
       </div>
     </div>
 
-    <div id="guess-modal">
+    <div id="guess-modal" role="dialog" aria-modal="true" aria-labelledby="guess-title">
       <div id="guess-modal-inner">
-        <h3>Make a guess</h3>
+        <h3 id="guess-title">Make a guess</h3>
         <div id="guess-text"></div>
         <select id="guess-target"></select>
         <div id="guess-modal-buttons">
@@ -84,9 +88,9 @@
       </div>
     </div>
 
-    <div id="qr-modal">
+    <div id="qr-modal" role="dialog" aria-modal="true" aria-labelledby="qr-title">
       <div id="qr-modal-inner">
-        <h3>Join this game</h3>
+        <h3 id="qr-title">Join this game</h3>
         <p>Scan this QR code to open the current session on another device.</p>
         <div id="qr-image-wrap">
           <img id="qr-image" alt="QR code for this session">
