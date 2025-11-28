@@ -1,4 +1,3 @@
-// partybox.js
 (function() {
   const statusEl = document.getElementById('status');
   const gameInfoEl = document.getElementById('game-info');
@@ -32,8 +31,8 @@
   let gameStarted = false;
   let currentTurnUser = '';
   let amOut = false;
-  let activePlayers = [];  // usernames of active players (not out)
-  let eliminatedList = []; // usernames of eliminated players
+  let activePlayers = [];
+  let eliminatedList = [];
   let pendingCelebrity = '';
 
   let ws = null;
@@ -73,7 +72,6 @@
 
     ws = new WebSocket(wsURL());
 
-    // Watchdog: if we never get onopen within N ms, force close so onclose can retry.
     clearWatchdog();
     connectWatchdog = setTimeout(function() {
       if (!ws) return;
@@ -177,7 +175,6 @@
     };
 
     ws.onerror = function() {
-      // Let onclose handle the retry logic; just surface a message if not kicked.
       if (!wasKicked) {
         statusEl.textContent = 'WebSocket error. Retrying…';
       }
@@ -392,7 +389,6 @@
     closeGuessModal();
   });
 
-  // QR modal wiring
   qrBtn.addEventListener('click', function() {
     const base = location.pathname.replace(/\/$/, '');
     qrImage.src = base + '/qr';
@@ -445,7 +441,6 @@
       return;
     }
 
-    // New, non-moderator player, lobby is open → prompt username + celebrity
     statusEl.textContent = 'Lobby is unlocked. Please join the game.';
     username = prompt('Enter your username:') || '';
     if (!username) return;
@@ -490,7 +485,6 @@
     sendJoin();
   }
 
-  // Moderator: lock/unlock lobby
   lockBtn.addEventListener('click', function() {
     if (!isModerator) return;
     const newLock = !lobbyLocked;
@@ -500,7 +494,6 @@
     });
   });
 
-  // Moderator: start game
   startBtn.addEventListener('click', function() {
     if (!isModerator) return;
     if (gameStarted) return;
@@ -509,7 +502,6 @@
     });
   });
 
-  // Moderator: kick players (event delegation on table body)
   playersBody.addEventListener('click', function(e) {
     if (!isModerator) return;
     const btn = e.target.closest('button.kick-btn');
@@ -527,6 +519,5 @@
     });
   });
 
-  // Kick off initial connection
   connectWebSocket();
 })();

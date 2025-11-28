@@ -62,9 +62,8 @@ body {
   padding: 0.4rem 1rem;
   border-radius: var(--radius-pill);
 
-  /* Higher contrast for all users */
-  background: #0f172a;  /* dark slate */
-  color: #ffffff;        /* pure white */
+  background: #0f172a;
+  color: #ffffff;
   border: 1px solid #020617;
 
   white-space: nowrap;
