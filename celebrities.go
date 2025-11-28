@@ -20,6 +20,17 @@
 // - Order player turns by who provided their celebrity name first
 // - Information is provided in two columns: player names, and celebrity names (not ordered/sorted)
 
+// TODO
+// Display QR code for current lobby in all games, for easy joining
+// Improve modularity so adding new games is consistent
+// Add scoring
+// Add moderation
+// Finish making the game actually work (gee, really?)
+// Make game links easily changeable
+// Allow toggling only specific games
+// Add nice styling
+// Think of more game ideas
+
 package main
 
 import (
