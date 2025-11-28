@@ -1088,185 +1088,445 @@ const indexHTML = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <title>Partybox - Guess the Celebrity</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 2rem; max-width: 800px; }
+  :root {
+    --bg: #0f172a;
+    --bg-card: #ffffff;
+    --border-subtle: #e2e8f0;
+    --accent: #2563eb;
+    --accent-soft: #dbeafe;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --danger: #dc2626;
+    --radius-lg: 16px;
+    --radius-pill: 999px;
+    --shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.15);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: radial-gradient(circle at top, #1d4ed8 0, #0f172a 45%, #020617 100%);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  .app-shell {
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(18px);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    width: 100%;
+    max-width: 960px;
+    padding: clamp(1rem, 2vw, 1.5rem);
+  }
+
   #top-bar {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 0.5rem;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
   }
+
   #top-bar h1 {
     margin: 0;
+    font-size: clamp(1.3rem, 4vw, 1.7rem);
+    letter-spacing: 0.02em;
   }
+
   #top-bar-right {
     display: flex;
     align-items: center;
     gap: 0.5rem;
   }
+
   #user-pill {
     font-size: 0.9rem;
-    padding: 0.3rem 0.7rem;
-    border-radius: 999px;
-    background: #f0f0f0;
-    color: #333;
+    padding: 0.35rem 0.9rem;
+    border-radius: var(--radius-pill);
+    background: var(--accent-soft);
+    color: var(--accent);
     white-space: nowrap;
   }
+
   #qr-btn {
-    font-size: 0.85rem;
-    padding: 0.25rem 0.6rem;
-    border-radius: 999px;
-    border: 1px solid #ccc;
-    background: #fff;
+    font-size: 0.9rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border-subtle);
+    background: #f8fafc;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    line-height: 1;
   }
+
+  #qr-btn::before {
+    content: "🔗";
+    font-size: 1rem;
+  }
+
   #qr-btn:hover {
-    background: #f5f5f5;
+    background: #e5e7eb;
   }
-  #status { margin-bottom: 0.25rem; font-size: 0.9rem; }
-  #game-info { margin-bottom: 1rem; font-size: 0.9rem; color: #444; }
+
+  #status {
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+
+  #game-info {
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+    color: var(--text-main);
+  }
+
   #game-info.your-turn {
     font-weight: 600;
-    color: #0b5ed7;
+    color: var(--accent);
   }
-  #celebs { margin-top: 1rem; padding: 0; list-style: none; }
-  #celebs li { padding: 0.25rem 0; border-bottom: 1px solid #ddd; cursor: pointer; }
-  #celebs li:hover { background: #f5f5f5; }
+
+  #game-info > div {
+    margin-bottom: 0.15rem;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .section-header h2 {
+    margin: 0.5rem 0 0.25rem;
+    font-size: clamp(1.05rem, 3.2vw, 1.2rem);
+  }
+
+  #celebs {
+    margin: 0;
+    margin-top: 0.35rem;
+    padding: 0;
+    list-style: none;
+    border-radius: 12px;
+    border: 1px solid var(--border-subtle);
+    background: #f9fafb;
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+
+  #celebs li {
+    padding: 0.6rem 0.9rem;
+    font-size: 0.95rem;
+    border-bottom: 1px solid #e5e7eb;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  #celebs li:last-child {
+    border-bottom: none;
+  }
+
+  #celebs li span {
+    flex: 1;
+  }
+
+  #celebs li::after {
+    content: "Tap to guess";
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-left: 0.5rem;
+    white-space: nowrap;
+  }
+
+  #celebs li:hover {
+    background: #e5edff;
+  }
 
   #mod-panel {
-    margin-top: 2rem;
+    margin-top: 1.5rem;
     padding-top: 1rem;
-    border-top: 1px solid #ccc;
+    border-top: 1px dashed var(--border-subtle);
     display: none;
   }
+
   #mod-panel h2 {
     margin-top: 0;
+    font-size: 1.05rem;
   }
+
+  .mod-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  #lock-btn,
+  #start-btn {
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-size: 0.9rem;
+    cursor: pointer;
+    min-height: 2.25rem;
+  }
+
+  #lock-btn {
+    background: #eef2ff;
+    color: #4338ca;
+    border-color: #c7d2fe;
+  }
+
+  #lock-btn:hover {
+    background: #e0e7ff;
+  }
+
+  #start-btn {
+    background: #dcfce7;
+    color: #166534;
+    border-color: #bbf7d0;
+  }
+
+  #start-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  #start-btn:not(:disabled):hover {
+    background: #bbf7d0;
+  }
+
+  #lock-status {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+
+  .mod-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid var(--border-subtle);
+    background: #f9fafb;
+  }
+
   #players-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 0.5rem;
-  }
-  #players-table th, #players-table td {
-    border: 1px solid #ddd;
-    padding: 0.4rem 0.5rem;
-    text-align: left;
-  }
-  #players-table th {
-    background: #f5f5f5;
-  }
-  #lock-btn, #start-btn {
-    margin-right: 0.5rem;
-  }
-  .kick-btn {
-    padding: 0.2rem 0.5rem;
-    font-size: 0.8rem;
-    cursor: pointer;
+    min-width: 420px;
   }
 
-  #guess-modal {
+  #players-table th,
+  #players-table td {
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0.5rem 0.65rem;
+    text-align: left;
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+
+  #players-table th {
+    background: #f3f4f6;
+    font-weight: 600;
+  }
+
+  #players-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .kick-btn {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    border-radius: 999px;
+    border: 1px solid rgba(220, 38, 38, 0.2);
+    background: #fef2f2;
+    color: var(--danger);
+  }
+
+  .kick-btn:hover {
+    background: #fee2e2;
+  }
+
+  #guess-modal,
+  #qr-modal {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.45);
+    background: rgba(15, 23, 42, 0.5);
     display: none;
     align-items: center;
     justify-content: center;
     z-index: 1000;
   }
-  #guess-modal-inner {
-    background: #fff;
-    padding: 1rem 1.5rem;
-    border-radius: 8px;
-    max-width: min(90vw, 320px);
-    width: 90vw;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    font-size: 0.9rem;
-  }
-  #guess-modal-inner h3 {
-    margin-top: 0;
-    margin-bottom: 0.5rem;
-  }
-  #guess-text {
-    margin-bottom: 0.5rem;
-  }
-  #guess-target {
-    width: 100%;
-    margin: 0.25rem 0 0.75rem 0;
-  }
-  #guess-modal-buttons {
-    text-align: right;
-  }
-  #guess-confirm, #guess-cancel {
-    margin-left: 0.5rem;
-  }
 
   #qr-modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.45);
-    display: none;
-    align-items: center;
-    justify-content: center;
     z-index: 1100;
   }
+
+  #guess-modal-inner,
   #qr-modal-inner {
-    background: #fff;
+    background: #ffffff;
     padding: 1rem 1.25rem;
-    border-radius: 10px;
-    max-width: min(90vw, 360px);
-    width: 90vw;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    font-size: 0.9rem;
+    border-radius: 14px;
+    max-width: min(95vw, 420px);
+    width: min(95vw, 420px);
+    box-shadow: 0 14px 40px rgba(15, 23, 42, 0.25);
+    font-size: 0.95rem;
   }
+
+  #guess-modal-inner h3,
   #qr-modal-inner h3 {
     margin-top: 0;
     margin-bottom: 0.5rem;
+    font-size: 1.05rem;
   }
+
+  #guess-text {
+    margin-bottom: 0.5rem;
+  }
+
+  #guess-target {
+    width: 100%;
+    margin: 0.25rem 0 0.75rem 0;
+    padding: 0.5rem 0.6rem;
+    border-radius: 10px;
+    border: 1px solid var(--border-subtle);
+    font-size: 0.95rem;
+  }
+
+  #guess-modal-buttons {
+    text-align: right;
+  }
+
+  #guess-confirm,
+  #guess-cancel,
+  #qr-close {
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-subtle);
+    font-size: 0.9rem;
+    cursor: pointer;
+    min-width: 4.2rem;
+  }
+
+  #guess-cancel,
+  #qr-close {
+    background: #f9fafb;
+    color: var(--text-main);
+  }
+
+  #guess-confirm {
+    margin-left: 0.5rem;
+    background: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent);
+  }
+
+  #guess-confirm:hover {
+    background: #1d4ed8;
+  }
+
   #qr-image-wrap {
     text-align: center;
+    margin-top: 0.5rem;
   }
+
   #qr-image {
     width: 100%;
     max-width: 320px;
     height: auto;
     image-rendering: pixelated;
+    border-radius: 12px;
+  }
+
+  #qr-modal-inner p {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 640px) {
+    .app-shell {
+      padding: 0.9rem;
+      border-radius: 12px;
+    }
+
+    #top-bar {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    #top-bar-right {
+      align-self: stretch;
+      justify-content: space-between;
+    }
+
+    #celebs {
+      max-height: 55vh;
+    }
+
+    #status {
+      font-size: 0.85rem;
+    }
   }
 </style>
 </head>
 <body>
-<div id="top-bar">
-  <h1>Guess the Celebrity</h1>
-  <div id="top-bar-right">
-    <div id="user-pill">You: <span id="user-name">(not set)</span></div>
-    <button id="qr-btn" type="button" title="Show QR code for this game">Share QR Code</button>
-  </div>
-</div>
-<div id="status">Connecting…</div>
-<div id="game-info"></div>
-
-<h2>Celebrity List</h2>
-<ul id="celebs"></ul>
-
-<div id="mod-panel">
-  <h2>Moderator Controls</h2>
-  <div style="margin-bottom: 0.5rem;">
-    <button id="lock-btn" type="button">Lock lobby</button>
-    <button id="start-btn" type="button">Start game</button>
-    <span id="lock-status"></span>
+<div class="app-shell">
+  <div id="top-bar">
+    <h1>Guess the Celebrity</h1>
+    <div id="top-bar-right">
+      <div id="user-pill">You: <span id="user-name">(not set)</span></div>
+      <button id="qr-btn" type="button" title="Show QR code for this game">Share</button>
+    </div>
   </div>
 
-  <h3>Players</h3>
-  <table id="players-table">
-    <thead>
-      <tr>
-        <th>Username</th>
-        <th>Celebrity</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody id="players-body">
-    </tbody>
-  </table>
+  <div id="status">Connecting…</div>
+  <div id="game-info"></div>
+
+  <div class="section-header">
+    <h2>Celebrity List</h2>
+  </div>
+  <ul id="celebs"></ul>
+
+  <div id="mod-panel">
+    <h2>Moderator Controls</h2>
+    <div class="mod-controls">
+      <button id="lock-btn" type="button">Lock lobby</button>
+      <button id="start-btn" type="button">Start game</button>
+      <span id="lock-status"></span>
+    </div>
+
+    <h3>Players</h3>
+    <div class="mod-table-wrap">
+      <table id="players-table">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Celebrity</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="players-body">
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <div id="guess-modal">
@@ -1581,7 +1841,9 @@ const indexHTML = `<!doctype html>
         celebsEl.innerHTML = '';
         msg.celebrities.forEach(function(c) {
           const li = document.createElement('li');
-          li.textContent = c;
+          const span = document.createElement('span');
+          span.textContent = c;
+          li.appendChild(span);
           li.addEventListener('click', function() {
             openGuessModal(c);
           });
