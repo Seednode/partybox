@@ -354,6 +354,11 @@ body {
   color: var(--text-main);
 }
 
+div.qr-close {
+  text-align:right;
+  margin-top:0.75rem;
+}
+
 #guess-confirm {
   margin-left: 0.5rem;
   background: var(--accent);

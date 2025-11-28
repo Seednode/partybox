@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"net/url"
 	"strings"
 	"time"
 
@@ -13,19 +12,18 @@ import (
 )
 
 type Config struct {
-	bind                  string
-	debug                 bool
-	playerTimeout time.Duration
-	port                  int
-	prefix                string
-	profile               bool
-	sessionTimeout               time.Duration
-	tlsCert               string
-	tlsKey                string
-	verbose               bool
-	version               bool
+	bind           string
+	playerTimeout  time.Duration
+	port           int
+	prefix         string
+	profile        bool
+	sessionTimeout time.Duration
+	tlsCert        string
+	tlsKey         string
+	verbose        bool
+	version        bool
 
-	baseURL *url.URL
+	// baseURL *url.URL
 }
 
 func (c *Config) validate() error {
@@ -72,9 +70,9 @@ func newCmd(cfg *Config) *cobra.Command {
 	})
 
 	fs.StringVarP(&cfg.bind, "bind", "b", "0.0.0.0", "address to bind to (env: PARTYBOX_BIND)")
-	fs.BoolVarP(&cfg.debug, "debug", "d", false, "log file permission errors instead of skipping (env: PARTYBOX_DEBUG)")
 	fs.DurationVar(&cfg.playerTimeout, "player-timeout", 10*time.Minute, "time before idle players are kicked (env: PARTYBOX_IDLE_PLAYER_TIMEOUT)")
 	fs.IntVarP(&cfg.port, "port", "p", 8080, "port to listen on (env: PARTYBOX_PORT)")
+	fs.StringVar(&cfg.prefix, "prefix", "", "path to prepend to all URLs, for use behind reverse proxy (env: PARTYBOX_PREFIX)")
 	fs.BoolVar(&cfg.profile, "profile", false, "register net/http/pprof handlers (env: PARTYBOX_PROFILE)")
 	fs.DurationVar(&cfg.sessionTimeout, "session-timeout", 60*time.Minute, "time before idle game sessions are ended (env: PARTYBOX_IDLE_SESSION_TIMEOUT)")
 	fs.StringVar(&cfg.tlsCert, "tls-cert", "", "path to tls certificate (env: PARTYBOX_TLS_CERT)")

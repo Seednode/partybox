@@ -34,20 +34,6 @@ func securityHeaders(cfg *Config, w http.ResponseWriter) {
 	}
 }
 
-func cspHome(cfg *Config, w http.ResponseWriter) {
-	origin := cfg.baseURL.Scheme + "://" + cfg.baseURL.Host
-
-	w.Header().Set("Content-Security-Policy",
-		"default-src 'self'; "+
-			"img-src 'self' data: blob:; "+
-			"media-src 'self' blob:; "+
-			"font-src 'self'; "+
-			"style-src 'self' 'unsafe-inline'; "+
-			"script-src 'self' 'unsafe-eval'; "+
-			"connect-src 'self' "+origin+"; "+
-			"frame-ancestors 'self'")
-}
-
 func realIP(r *http.Request) string {
 	host, port, _ := net.SplitHostPort(r.RemoteAddr)
 	if ip := r.Header.Get("CF-Connecting-IP"); ip != "" {
@@ -125,25 +111,9 @@ func ServePage(ctx context.Context, cfg *Config, args []string) error {
 
 	errs := make(chan error, 64)
 
-	go func() {
-		for err := range errs {
-			if errors.Is(err, os.ErrNotExist) || errors.Is(err, os.ErrPermission) {
-				if cfg.debug {
-					fmt.Printf("%s | DEBUG: %v\n", time.Now().Format(logDate), err)
-				}
-
-				continue
-			}
-
-			fmt.Printf("%s | ERROR: %v\n", time.Now().Format(logDate), err)
-		}
-	}()
-
 	cfg.prefix = strings.TrimSuffix(cfg.prefix, "/")
 
-	registerHome(cfg, cfg.prefix+"/", mux)
-
-	registerGame(cfg, "/celebrity", mux)
+	mux.GET(cfg.prefix+"/", serveHomePage(cfg))
 
 	mux.GET(cfg.prefix+"/favicons/*favicon", serveFavicons(cfg, errs))
 
@@ -158,6 +128,8 @@ func ServePage(ctx context.Context, cfg *Config, args []string) error {
 	if cfg.profile {
 		registerProfileHandlers(cfg, mux)
 	}
+
+	registerCelebrityGame(cfg, "/celebrity", mux)
 
 	go func() {
 		var err error

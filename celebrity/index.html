@@ -1,80 +1,98 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Partybox - Guess The Celebrity</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="../assets/celebrity/app.css">
-</head>
-<body>
-<div class="app-shell">
-  <div id="top-bar">
-    <h1>Guess The Celebrity</h1>
-    <div id="top-bar-right">
-      <div id="user-pill">You: <span id="user-name">(not set)</span></div>
-      <button id="qr-btn" type="button" title="Show QR code for this game">Share</button>
-      <button id="newgame-btn" type="button" title="Start a new game">New game</button>
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8" />
+	  <meta
+	    name="viewport"
+	    content="width=device-width, initial-scale=1, shrink-to-fit=no"
+	  />
+
+    <title>Partybox - Guess The Celebrity</title>
+	  <meta name="Description" content="Guess which of your friends picked which celebrity." />
+	  <meta name="theme-color" content="#ffffff" />
+	  <meta property="og:site_name" content="https://github.com/Seednode/partybox" />
+	  <meta property="og:title" content="Partybox" />
+	  <meta property="og:description" content="Guess which of your friends picked which celebrity." />
+	  <meta property="og:url" content="https://github.com/Seednode/partybox" />
+	  <meta property="og:type" content="website" />
+
+    <link rel="stylesheet" href="../assets/celebrity/app.css">
+	  <link rel="preload" href="../assets/celebrity/app.js" as="script" />
+
+	  <link rel="apple-touch-icon" sizes="180x180" href="../favicons/apple-touch-icon.png" />
+	  <link rel="icon" type="image/png" sizes="96x96" href="../favicons/favicon-96x96.png" />
+	  <link rel="manifest" href="../favicons/site.webmanifest" />
+	  <meta name="msapplication-TileColor" content="#da532c" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div id="top-bar">
+        <h1>Guess The Celebrity</h1>
+        <div id="top-bar-right">
+          <div id="user-pill">You: <span id="user-name">(not set)</span></div>
+          <button id="qr-btn" type="button" title="Show QR code for this game">Share</button>
+          <button id="newgame-btn" type="button" title="Start a new game">New game</button>
+        </div>
+      </div>
+
+      <div id="status">Connecting…</div>
+      <div id="game-info"></div>
+
+      <div class="section-header">
+        <h2>Celebrity List</h2>
+      </div>
+      <ul id="celebs"></ul>
+
+      <div id="mod-panel">
+        <h2>Moderator Controls</h2>
+        <div class="mod-controls">
+          <button id="lock-btn" type="button">Lock lobby</button>
+          <button id="start-btn" type="button">Start game</button>
+          <span id="lock-status"></span>
+        </div>
+
+        <h3>Players</h3>
+        <div class="mod-table-wrap">
+          <table id="players-table">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Celebrity</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="players-body">
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div id="status">Connecting…</div>
-  <div id="game-info"></div>
-
-  <div class="section-header">
-    <h2>Celebrity List</h2>
-  </div>
-  <ul id="celebs"></ul>
-
-  <div id="mod-panel">
-    <h2>Moderator Controls</h2>
-    <div class="mod-controls">
-      <button id="lock-btn" type="button">Lock lobby</button>
-      <button id="start-btn" type="button">Start game</button>
-      <span id="lock-status"></span>
+    <div id="guess-modal">
+      <div id="guess-modal-inner">
+        <h3>Make a guess</h3>
+        <div id="guess-text"></div>
+        <select id="guess-target"></select>
+        <div id="guess-modal-buttons">
+          <button id="guess-cancel" type="button">Cancel</button>
+          <button id="guess-confirm" type="button">Guess</button>
+        </div>
+      </div>
     </div>
 
-    <h3>Players</h3>
-    <div class="mod-table-wrap">
-      <table id="players-table">
-        <thead>
-          <tr>
-            <th>Username</th>
-            <th>Celebrity</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="players-body">
-        </tbody>
-      </table>
+    <div id="qr-modal">
+      <div id="qr-modal-inner">
+        <h3>Join this game</h3>
+        <p>Scan this QR code to open the current session on another device.</p>
+        <div id="qr-image-wrap">
+          <img id="qr-image" alt="QR code for this session">
+        </div>
+        <div id="qr-close">
+          <button id="qr-close" type="button">Close</button>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
 
-<div id="guess-modal">
-  <div id="guess-modal-inner">
-    <h3>Make a guess</h3>
-    <div id="guess-text"></div>
-    <select id="guess-target"></select>
-    <div id="guess-modal-buttons">
-      <button id="guess-cancel" type="button">Cancel</button>
-      <button id="guess-confirm" type="button">Guess</button>
-    </div>
-  </div>
-</div>
-
-<div id="qr-modal">
-  <div id="qr-modal-inner">
-    <h3>Join this game</h3>
-    <p>Scan this QR code to open the current session on another device.</p>
-    <div id="qr-image-wrap">
-      <img id="qr-image" alt="QR code for this session">
-    </div>
-    <div style="text-align:right;margin-top:0.75rem;">
-      <button id="qr-close" type="button">Close</button>
-    </div>
-  </div>
-</div>
-
-<script src="../assets/celebrity/app.js" defer></script>
-</body>
+    <script src="../assets/celebrity/app.js" defer></script>
+  </body>
 </html>

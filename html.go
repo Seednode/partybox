@@ -12,14 +12,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-func serveHomePage(cfg *Config) httprouter.Handle {
-	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		securityHeaders(cfg, w)
-		cspHome(cfg, w)
-	}
-}
-
 func serveHealthCheck(cfg *Config, errs chan<- error) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -75,6 +67,12 @@ Disallow: /`
 	}
 }
 
-func registerHome(cfg *Config, path string, mux *httprouter.Router) {
-	mux.GET(path, serveHomePage(cfg))
+func serveHomePage(cfg *Config) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		securityHeaders(cfg, w)
+
+		// Temporary redirect to celebrity game, until others are added
+		http.Redirect(w, r, cfg.prefix+"/celebrity", http.StatusTemporaryRedirect)
+	}
 }

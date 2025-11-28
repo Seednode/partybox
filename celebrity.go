@@ -1091,19 +1091,37 @@ var partyboxCSS []byte
 //go:embed celebrity/app.js
 var partyboxJS []byte
 
-func indexHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = w.Write(indexHTML)
+func getIndexHandler(cfg *Config) func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		w.Header().Set("Expires", time.Now().Add(time.Hour).UTC().Format(http.TimeFormat))
+		securityHeaders(cfg, w)
+
+		_, _ = w.Write(indexHTML)
+	}
 }
 
-func cssHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	w.Header().Set("Content-Type", "text/css; charset=utf-8")
-	_, _ = w.Write(partyboxCSS)
+func getCssHandler(cfg *Config) func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		w.Header().Set("Expires", time.Now().Add(time.Hour).UTC().Format(http.TimeFormat))
+		securityHeaders(cfg, w)
+
+		_, _ = w.Write(partyboxCSS)
+	}
 }
 
-func jsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
-	_, _ = w.Write(partyboxJS)
+func getJsHandler(cfg *Config) func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		w.Header().Set("Expires", time.Now().Add(time.Hour).UTC().Format(http.TimeFormat))
+		securityHeaders(cfg, w)
+
+		_, _ = w.Write(partyboxJS)
+	}
 }
 
 // redirectNewGame handles GET /path by generating a new random game ID
@@ -1121,18 +1139,18 @@ func redirectNewGame(cfg *Config, path string, gm *GameManager) httprouter.Handl
 //   - $path/:gameid          → HTML client
 //   - $path/:gameid/ws       → WebSocket for that game
 //   - $path/:gameid/qr       → PNG QR code for that game URL
-func registerGame(cfg *Config, path string, mux *httprouter.Router) {
+func registerCelebrityGame(cfg *Config, path string, mux *httprouter.Router) {
 	gm := newGameManager(cfg.sessionTimeout)
 
 	// Root path → redirect to new random game
 	mux.GET(path, redirectNewGame(cfg, path, gm))
 
 	// Per-game client view (HTML)
-	mux.GET(cfg.prefix+path+"/:gameid", indexHandler)
+	mux.GET(cfg.prefix+path+"/:gameid", getIndexHandler(cfg))
 
 	// Shared assets (no gameid in route)
-	mux.GET(cfg.prefix+"/assets/celebrity/app.css", cssHandler)
-	mux.GET(cfg.prefix+"/assets/celebrity/app.js", jsHandler)
+	mux.GET(cfg.prefix+"/assets/celebrity/app.css", getCssHandler(cfg))
+	mux.GET(cfg.prefix+"/assets/celebrity/app.js", getJsHandler(cfg))
 
 	// Per-game websocket
 	mux.GET(cfg.prefix+path+"/:gameid/ws", serveWSForManager(cfg, gm))
