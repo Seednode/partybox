@@ -1,6 +1,6 @@
 {
-  "name": "Ingest",
-  "short_name": "Ingest",
+  "name": "Partybox",
+  "short_name": "Partybox",
   "icons": [
     {
       "src": "./web-app-manifest-192x192.png",
