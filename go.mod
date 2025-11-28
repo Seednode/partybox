@@ -3,6 +3,7 @@ module github.com/Seednode/partybox
 go 1.25
 
 require (
+	github.com/gorilla/websocket v1.5.3
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
