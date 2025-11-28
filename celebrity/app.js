@@ -10,6 +10,8 @@
   const startBtn = document.getElementById('start-btn');
   const lockStatusEl = document.getElementById('lock-status');
   const playersBody = document.getElementById('players-body');
+  const playerCountEl = document.getElementById('player-count');
+  const playerWarningEl = document.getElementById('player-warning');
 
   const guessModal = document.getElementById('guess-modal');
   const guessTextEl = document.getElementById('guess-text');
@@ -198,6 +200,29 @@
       : 'Lobby is unlocked; new players may join.';
   }
 
+  function updatePlayerSummary(players) {
+    const count = Array.isArray(players) ? players.length : 0;
+
+    if (playerCountEl) {
+      playerCountEl.textContent = `(${count})`;
+    }
+
+    if (playerWarningEl) {
+      if (count === 0) {
+        playerWarningEl.textContent = 'Waiting for players to join.';
+      } else if (count > 0 && count < 3) {
+        playerWarningEl.textContent =
+          `Warning: games usually need at least 3 players. You currently have ${count}.`;
+      } else {
+        playerWarningEl.textContent = '';
+      }
+    }
+
+    if (typeof isModerator !== 'undefined' && isModerator && startBtn) {
+      startBtn.disabled = (count === 0);
+    }
+  }
+
   function renderModeratorPlayers(players) {
     playersBody.innerHTML = '';
     players.forEach(function(p) {
@@ -223,6 +248,8 @@
 
       playersBody.appendChild(tr);
     });
+
+    updatePlayerSummary(players);
   }
 
   function describeTeams(teams) {

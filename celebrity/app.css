@@ -273,6 +273,12 @@ body {
   border-bottom: none;
 }
 
+.player-warning {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.85rem;
+  color: #b45309;
+}
+
 .kick-btn {
   padding: 0.35rem 0.7rem;
   font-size: 0.8rem;

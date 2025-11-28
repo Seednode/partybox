@@ -451,6 +451,14 @@ func (h *Hub) startGameLocked() {
 		return
 	}
 
+	switch {
+	case len(h.players) == 0:
+		return
+	case len(h.players) <= 2:
+
+	case len(h.players) > 2:
+	}
+
 	ids := make([]string, 0, len(h.players))
 	for _, p := range h.players {
 		ids = append(ids, p.PlayerID)
