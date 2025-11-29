@@ -212,15 +212,15 @@
         playerWarningEl.textContent = 'Waiting for players to join.';
       } else if (count === 1) {
         playerWarningEl.textContent =
-          `Warning: games need at least 2 players. You currently have ${count}.`;
+          `At least 2 players (preferably more) required to begin.`;
       } else {
-        playerWarningEl.textContent = '';
+        playerWarningEl.textContent = 'Ready to begin!';
       }
     }
 
     if (typeof isModerator !== 'undefined' && isModerator) {
       if (startBtn) {
-        startBtn.disabled = (count < 3);
+        startBtn.disabled = (count < 2);
       }
     }
   }
@@ -297,14 +297,7 @@
       gameInfoEl.innerHTML = lines.map(function(t) {
         return '<div>' + t + '</div>';
       }).join('');
-      if (isModerator && startBtn) {
-        startBtn.disabled = false;
-      }
       return;
-    }
-
-    if (isModerator && startBtn) {
-      startBtn.disabled = true;
     }
 
     if (username && !amOut && currentTurnUser === username) {

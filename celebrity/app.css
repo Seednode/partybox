@@ -83,6 +83,11 @@ body {
   text-overflow: ellipsis;
 }
 
+#user-pill::before {
+  content: "👤";
+  font-size: 1rem;
+}
+
 /* Top-right buttons – Share + New game */
 #qr-btn,
 #new-game-btn {
