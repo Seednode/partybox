@@ -1,3 +1,7 @@
+/*
+Copyright © 2026 Seednode <seednode@seedno.de>
+*/
+
 // Partybox Celebrity Game
 //
 // Each player provides their username and the name of a celebrity or famous figure,

@@ -21,5 +21,5 @@ for platform in "${platforms[@]}"; do
   GOARCH="${platform_split[1]}"
   output_name="${package_name}-${GOOS}-${GOARCH}"
   ld_flags='-s -w'
-  env GOOS="${GOOS}" GOARCH="${GOARCH}" CC="musl-gcc" CGO_ENABLED=0 go build -trimpath -ldflags "${ld_flags}" -tags "netgo timetzdata" -o "builds/${output_name}"
+  env GOOS="${GOOS}" GOARCH="${GOARCH}" GOEXPERIMENT=goroutineleakprofile CC="musl-gcc" CGO_ENABLED=0 go build -trimpath -ldflags "${ld_flags}" -tags "netgo timetzdata" -o "builds/${output_name}"
 done

@@ -1,3 +1,7 @@
+/*
+Copyright © 2026 Seednode <seednode@seedno.de>
+*/
+
 package main
 
 import (
